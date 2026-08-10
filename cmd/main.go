@@ -16,9 +16,9 @@ func main() {
 	// Initialize Database from pkg/db
 	database, err := db.InitializeDB("server_data.db")
 	if err != nil {
-		log.Fatalf("[  DB -> SERVER  ] Failed to initialize database: %v", err)
+		log.Fatalf("[  DB -> SERVER ] Failed to initialize database: %v", err)
 	}
-	fmt.Println("[  DB -> SERVER  ] Database confirmation received.")
+	fmt.Println("[  DB -> SERVER ] Database confirmation received.")
 	defer database.Close()
 
 	// Initialize the API server from pkg/api

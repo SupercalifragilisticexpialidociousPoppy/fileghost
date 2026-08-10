@@ -15,6 +15,8 @@ func NewRouter(srv *Server) *http.ServeMux {
 	// Auth Routes
 	mux.HandleFunc("/register", srv.HandleRegister)
 	mux.HandleFunc("/login", srv.HandleLogin)
+	mux.HandleFunc("/logout", srv.HandleLogout)
+	mux.HandleFunc("/changepassword", srv.HandleChangePassword)
 
 	// File Storage Routes
 	mux.HandleFunc("/upload", srv.HandleUpload)

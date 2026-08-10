@@ -3,8 +3,12 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
+	"fileghost_server/pkg/auth"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	// SQLite driver
 	_ "github.com/mattn/go-sqlite3"
@@ -44,6 +48,7 @@ func InitializeDB(filepath string) (*sql.DB, error) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			username TEXT UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
+			current_token TEXT UNIQUE DEFAULT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 	`)
@@ -85,17 +90,210 @@ func GetStorageStats() StorageResponse {
 
 // ProcessUpload streams the encrypted file to disk and logs it to SQLite
 func ProcessUpload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// 1. Authenticate JWT header
-	// 2. Stream request body to disk
-	// 3. Insert file metadata into SQLite
+	fmt.Println("\n[      STOR      ] Upload request initiated.")
 
-	json.NewEncoder(w).Encode(StandardResponse{Status: "success", Message: "File uploaded"})
+	// 1. Extract Token from Header
+	currentToken := r.Header.Get("X-Session-Token")
+	if currentToken == "" {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Missing authentication token", http.StatusUnauthorized)
+		fmt.Println("[      STOR      ]     User token is missing.")
+		return
+	}
+	fmt.Println("[      STOR      ]     User token found.")
+
+	// 2. Verify User and Get Owner ID
+	var ownerID int
+	err := database.QueryRow("SELECT id FROM users WHERE current_token = ?", currentToken).Scan(&ownerID)
+	if err != nil {
+		fmt.Println("[   AUTH_CRYPT   ] Process aborted:")
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			fmt.Println("[   AUTH_CRYPT   ]     User token is invalid.")
+			return
+		}
+		fmt.Println("[   AUTH_CRYPT   ]     User token is valid.")
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		fmt.Println("[    DB__STOR    ]     Database error occurred.")
+		return
+	}
+	fmt.Println("[   AUTH_CRYPT   ] User token is valid.")
+
+	// 3. Roll the Token
+	newToken, err := auth.GenerateOneTimeToken()
+	if err != nil {
+		fmt.Println("[   AUTH_CRYPT   ] Process aborted:")
+		http.Error(w, "Failed to generate new token", http.StatusInternalServerError)
+		fmt.Println("[   AUTH_CRYPT   ]     New token couldn't be generated.")
+		return
+	}
+	fmt.Println("[   AUTH_CRYPT   ] New token generated.")
+
+	_, err = database.Exec("UPDATE users SET current_token = ? WHERE id = ?", newToken, ownerID)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Failed to update session", http.StatusInternalServerError)
+		fmt.Println("[    DB__STOR    ]     Database couldn't be updated with new token. You can use the previous token for the next command or log in again to generate a new token (safer).")
+		return
+	}
+	fmt.Println("[      STOR      ] Database updated with new token.")
+
+	// Set the new token in the response headers immediately
+	w.Header().Set("X-New-Token", newToken)
+
+	// 4. Set up the file on disk
+	fileID, _ := generateFileID()
+	os.MkdirAll("storage", 0755)
+	savePath := filepath.Join("storage", fileID+".enc")
+
+	outFile, err := os.Create(savePath)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Failed to create file on server", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     File couldn't be created on the server.") // Please log in again to generate a new token and try again.") //the new token has been saved on db, can't be returned because this failed.
+		return
+	}
+	defer outFile.Close()
+
+	// 5. Stream the request body directly to the file (RAM efficient!)
+	writtenBytes, err := io.Copy(outFile, r.Body)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		os.Remove(savePath) //stream failed, delete incomplete file
+		http.Error(w, "Failed to stream file data", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     File couldn't be streamed to the server completely.") // Please log in again to generate a new token and then try again.") // the new token has been saved on db, can't be returned because this failed.
+		return
+	}
+
+	// 6. Insert metadata into SQLite
+	_, err = database.Exec(`
+		INSERT INTO files (id, owner_id, file_path, size_bytes) 
+		VALUES (?, ?, ?, ?)`,
+		fileID, ownerID, savePath, writtenBytes,
+	)
+
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		// If DB fails, delete the orphaned file to save space
+		os.Remove(savePath)
+		http.Error(w, "Failed to save file metadata", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     File metadata couldn't be saved.")
+		return
+	}
+
+	fmt.Printf("[   STORAGE      ] File %s saved securely. Size: %d bytes\n", fileID, writtenBytes)
+
+	// 7. Return success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(StandardResponse{
+		Status:  "success",
+		Message: fmt.Sprintf("File uploaded. ID: %s", fileID),
+	})
 }
 
 // ProcessDownload fetches the file from disk and streams it back to the client
 func ProcessDownload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// 1. Authenticate JWT header
-	// 2. Verify user owns requested file ID
-	// 3. Stream file from disk to response body
-	return
+	fmt.Println("\n[      STOR      ] Download request initiated.")
+
+	// 1. Extract Token and File ID
+	currentToken := r.Header.Get("X-Session-Token")
+	fileID := r.URL.Query().Get("id")
+
+	if currentToken == "" || fileID == "" {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Missing token or file ID", http.StatusBadRequest)
+		fmt.Println("[      STOR      ]     Token or file_ID is missing from payload.")
+		return
+	}
+	fmt.Println("[      STOR      ] Extracted token and file_ID from request.")
+
+	// 2. Verify User & Token
+	var ownerID int
+	err := database.QueryRow("SELECT id FROM users WHERE current_token = ?", currentToken).Scan(&ownerID)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			fmt.Println("[      STOR      ]     Token invalid.")
+			return
+		}
+		fmt.Println("[      STOR      ]     Token valid.")
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     Database decided to give up.")
+		return
+	}
+	fmt.Println("[      STOR      ] Token verified.")
+
+	// 3. Verify File Ownership and Get Local Path
+	var filePath string
+	var fileSize int64
+	err = database.QueryRow("SELECT file_path, size_bytes FROM files WHERE id = ? AND owner_id = ?", fileID, ownerID).Scan(&filePath, &fileSize)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		if err == sql.ErrNoRows {
+			http.Error(w, "File not found or access denied", http.StatusNotFound)
+			fmt.Println("[      STOR      ]     File not found in database, or you're not authorized to view it.")
+			return
+		}
+		fmt.Println("[      STOR      ]     File found in database. User can access it.")
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     Database decided to give up.")
+		return
+	}
+	fmt.Println("[      STOR      ] File located in database. User can access it.")
+
+	// 4. Roll the Token
+	newToken, err := auth.GenerateOneTimeToken()
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Failed to generate new token", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     New token generation failed.")
+		return
+	}
+	fmt.Println("[      STOR      ] New token generated.")
+
+	_, err = database.Exec("UPDATE users SET current_token = ? WHERE id = ?", newToken, ownerID)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Failed to update session", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     Couldn't update new token in the database. Please use the old token for the next command or log in again (safer).")
+		return
+	}
+
+	// Set the new token in the response header
+	w.Header().Set("X-New-Token", newToken)
+	fmt.Println("[      STOR      ] Added to token to response header.")
+
+	// 5. Open File from Disk
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "File missing on server storage", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     File missing or corrupted in the server.")
+		return
+	}
+	fmt.Println("[      STOR      ] File opened.")
+	defer file.Close()
+
+	// 6. Set Download Headers
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileSize))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.enc\"", fileID))
+
+	// 7. Stream File to Response Body (RAM Efficient!)
+	written, err := io.Copy(w, file)
+	if err != nil {
+		fmt.Println("[      STOR      ] Process aborted:")
+		fmt.Printf("[   STORAGE      ] Streaming interrupted: %v\n", err)
+		fmt.Println("[      STOR      ]     File streaming interrupted.")
+		return
+	}
+
+	fmt.Printf("[      STOR      ] File %s successfully streamed (%d bytes).\n", fileID, written)
+}
+
+// Helper to generate random file IDs
+func generateFileID() (string, error) {
+	return auth.GenerateOneTimeToken() // Reusing the secure hex generator for a 64-char file ID
 }

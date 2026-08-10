@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"fileghost_server/pkg/auth"
@@ -22,7 +23,8 @@ func (s *Server) HandlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("PONG\n"))
+	w.Write([]byte("[     SERVER    ] Server pinged.\n"))
+	fmt.Println("[     SERVER    ] Server pinged.")
 }
 
 func (s *Server) HandleCheckStorage(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +59,24 @@ func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate business logic to the auth package
 	auth.ProcessLogin(s.DB, w, r)
+}
+
+func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Delegate business logic to the auth package
+	auth.ProcessLogout(s.DB, w, r)
+}
+
+func (s *Server) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	auth.ProcessChangePassword(s.DB, w, r)
 }
 
 // --- File Storage Handlers ---
