@@ -29,8 +29,8 @@ func DeriveKey(password string, salt []byte) []byte {
 // Encrypt takes raw data and a password, producing [Salt][Nonce][Ciphertext+Tag]
 func Encrypt(plaintext []byte, password string) ([]byte, error) {
 	// 0. Confirmation of command.
-	fmt.Println("[  CLI -> ENC   ] Received payload.")
-	fmt.Println("[      ENC      ] Attempting encryption...")
+	fmt.Println("[  CLI --> ENC   ] Received payload.")
+	fmt.Println("[      ENC       ] Attempting encryption...")
 
 	// 1. Generate random 16-byte salt
 	salt := make([]byte, SaltSize)
@@ -108,7 +108,7 @@ func Decrypt(encryptedData []byte, password string) ([]byte, error) {
 	// 4. Decrypt and verify integrity tag
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, errors.New("[      ENC      ]     Decryption failed: incorrect password or corrupted payload")
+		return nil, errors.New("[      ENC      ]     Decryption failed: Message Authentication Code inconsistent. You've either used an incorrect password or the payload is corrupted.")
 	}
 	fmt.Println("[      ENC      ]     Decryption complete.")
 
