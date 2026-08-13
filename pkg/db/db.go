@@ -26,6 +26,11 @@ type StandardResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+type UsernameAndTokenRequest struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
+}
+
 // 16 Gigabytes in Bytes (soft-cap)
 const MaxStorageBytes int64 = 16 * 1024 * 1024 * 1024
 
@@ -326,4 +331,8 @@ func GetStorageStats(database *sql.DB) StorageResponse {
 		TotalBytes:     MaxStorageBytes,
 		AvailableBytes: available,
 	}
+}
+
+func ProcessViewFiles(database *sql.DB, w http.ResponseWriter, r *http.Request) {
+
 }
