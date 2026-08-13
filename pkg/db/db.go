@@ -26,9 +26,16 @@ type StandardResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-type UsernameAndTokenRequest struct {
-	Username string `json:"username"`
-	Token    string `json:"token"`
+type FileRecord struct {
+	ID         string `json:"id"`
+	SizeBytes  int64  `json:"size_bytes"`
+	UploadedAt string `json:"uploaded_at"`
+}
+
+type MyFilesResponse struct {
+	Files         []FileRecord `json:"files"`
+	TotalFiles    int          `json:"totalFiles"`
+	FilesReceived int          `json:"boobs"`
 }
 
 // 16 Gigabytes in Bytes (soft-cap)
@@ -127,7 +134,7 @@ func ProcessUpload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Pre-flight check: If the HTTP request tells us the file size, check it immediately
 	if r.ContentLength > availableBytes {
 		fmt.Println("[      STOR      ] Process aborted:")
-		http.Error(w, "Upload exceeds 10GB server capacity", http.StatusInsufficientStorage)
+		http.Error(w, "Upload exceeds server capacity", http.StatusInsufficientStorage)
 		fmt.Printf("[      STOR      ]     File exceeds available storage capacity: %v bytes\n", availableBytes)
 		return
 	}
@@ -135,21 +142,19 @@ func ProcessUpload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// 3. Roll the Token
 	newToken, err := auth.GenerateOneTimeToken()
 	if err != nil {
-		fmt.Println("[   AUTH_CRYPT   ] Process aborted:")
-		http.Error(w, "Failed to generate new token", http.StatusInternalServerError)
-		fmt.Println("[   AUTH_CRYPT   ]     New token couldn't be generated.")
-		return
+		fmt.Println("[   AUTH_CRYPT   ]  New token couldn't be generated. Reusing old token.")
+		newToken = currentToken
+	} else {
+		fmt.Println("[   AUTH_CRYPT   ] New token generated.")
 	}
-	fmt.Println("[   AUTH_CRYPT   ] New token generated.")
 
 	_, err = database.Exec("UPDATE users SET current_token = ? WHERE id = ?", newToken, ownerID)
 	if err != nil {
-		fmt.Println("[      STOR      ] Process aborted:")
-		http.Error(w, "Failed to update session", http.StatusInternalServerError)
-		fmt.Println("[    DB__STOR    ]     Database couldn't be updated with new token. You can use the previous token for the next command or log in again to generate a new token (safer).")
-		return
+		fmt.Println("[    DB__STOR    ] Database couldn't be updated with new token. Returning response with old token.")
+		newToken = currentToken
+	} else {
+		fmt.Println("[      STOR      ] Database updated with new token.")
 	}
-	fmt.Println("[      STOR      ] Database updated with new token.")
 
 	// Set the new token in the response headers immediately
 	w.Header().Set("X-New-Token", newToken)
@@ -259,19 +264,22 @@ func ProcessDownload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// 4. Roll the Token
 	newToken, err := auth.GenerateOneTimeToken()
 	if err != nil {
-		fmt.Println("[      STOR      ] Process aborted:")
-		http.Error(w, "Failed to generate new token", http.StatusInternalServerError)
-		fmt.Println("[      STOR      ]     New token generation failed.")
-		return
+		//fmt.Println("[      STOR      ] Process aborted:")
+		//http.Error(w, "Failed to generate new token", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ] New token generation failed.")
+		newToken = currentToken
+	} else {
+		fmt.Println("[      STOR      ] New token generated.")
 	}
-	fmt.Println("[      STOR      ] New token generated.")
 
 	_, err = database.Exec("UPDATE users SET current_token = ? WHERE id = ?", newToken, ownerID)
 	if err != nil {
-		fmt.Println("[      STOR      ] Process aborted:")
-		http.Error(w, "Failed to update session", http.StatusInternalServerError)
-		fmt.Println("[      STOR      ]     Couldn't update new token in the database. Please use the old token for the next command or log in again (safer).")
-		return
+		// fmt.Println("[      STOR      ] Process aborted:")
+		// http.Error(w, "Failed to update session", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ] Couldn't update new token in the database.")
+		newToken = currentToken
+	} else {
+		fmt.Println("[      STOR      ] Database updated with new token.")
 	}
 
 	// Set the new token in the response header
@@ -333,6 +341,86 @@ func GetStorageStats(database *sql.DB) StorageResponse {
 	}
 }
 
-func ProcessViewFiles(database *sql.DB, w http.ResponseWriter, r *http.Request) {
+// ProcessMyFiles returns a JSON array of all files owned by the authenticated user
+func ProcessMyFiles(database *sql.DB, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n[      STOR      ] File list request initiated.")
 
+	// 1. Extract Token
+	currentToken := r.Header.Get("X-Session-Token")
+	if currentToken == "" {
+		fmt.Println("[      STOR      ] Aborting Process:")
+		http.Error(w, "Missing authentication token", http.StatusUnauthorized)
+		fmt.Println("[      STOR      ]     Token not found.")
+		return
+	}
+	fmt.Println("[      STOR      ] Token extracted.")
+
+	// 2. Verify User and Get Owner ID
+	var ownerID int
+	err := database.QueryRow("SELECT id FROM users WHERE current_token = ?", currentToken).Scan(&ownerID)
+	if err != nil {
+		fmt.Println("[      STOR      ] Aborting Process:")
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			fmt.Println("[      STOR      ]     Token invalid.")
+			return
+		}
+		fmt.Println("[      STOR      ]     Token valid.")
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     Internal database error.")
+		return
+	}
+	fmt.Println("[      STOR      ] User ID verified.")
+
+	// 3. Roll the Token (Keeping your architecture consistent)
+	fmt.Println("[      STOR      ] Generating new token...")
+	newToken, err := auth.GenerateOneTimeToken()
+	if err == nil {
+		_, err := database.Exec("UPDATE users SET current_token = ? WHERE id = ?", newToken, ownerID)
+		if err != nil {
+			fmt.Println("[      AUTH      ] Couldn't update database with the new token. Returning previous token.")
+			w.Header().Set("X-New-Token", currentToken)
+		} else {
+			w.Header().Set("X-New-Token", newToken)
+		}
+	} else {
+		fmt.Println("[      STOR      ] Error in token generation. Returning with previous token.")
+		w.Header().Set("X-New-Token", currentToken)
+	}
+
+	// 4. Query all files for this specific user
+	rows, err := database.Query("SELECT id, size_bytes, uploaded_at FROM files WHERE owner_id = ? ORDER BY uploaded_at DESC", ownerID)
+	if err != nil {
+		fmt.Println("[      STOR      ] Aborting Process:")
+		http.Error(w, "Failed to retrieve files", http.StatusInternalServerError)
+		fmt.Println("[      STOR      ]     Database error fetching files.")
+		return
+	}
+	defer rows.Close()
+
+	var filesFromDB int = 0
+	// 5. Build the variable-sized dynamic slice
+	var files []FileRecord
+	for rows.Next() {
+		var f FileRecord
+		// We scan the exact columns requested in the SELECT statement
+		if err := rows.Scan(&f.ID, &f.SizeBytes, &f.UploadedAt); err == nil {
+			files = append(files, f)
+		} else {
+			filesFromDB++
+		}
+	}
+	boobs := int(len(files))
+	filesFromDB += boobs
+
+	// 6. Ship it! Go automatically marshals the slice into a JSON array.
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(MyFilesResponse{
+		Files:         files,
+		TotalFiles:    filesFromDB,
+		FilesReceived: boobs,
+	})
+
+	fmt.Printf("[      STOR      ] Returned %d file records to client.\n", len(files))
 }

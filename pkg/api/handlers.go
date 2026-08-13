@@ -101,3 +101,13 @@ func (s *Server) HandleCheckStorage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
+
+func (s *Server) HandleMyFiles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Delegate all business logic and HTTP writing to the db package
+	db.ProcessMyFiles(s.DB, w, r)
+}

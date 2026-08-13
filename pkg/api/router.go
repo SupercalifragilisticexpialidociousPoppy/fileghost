@@ -21,6 +21,7 @@ func NewRouter(srv *Server) *http.ServeMux {
 	// File Storage Routes
 	mux.HandleFunc("/upload", srv.HandleUpload)
 	mux.HandleFunc("/download", srv.HandleDownload)
+	mux.HandleFunc("/myfiles", srv.HandleMyFiles)
 
 	return mux
 }
