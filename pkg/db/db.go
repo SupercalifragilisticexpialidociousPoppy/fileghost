@@ -26,6 +26,9 @@ type StandardResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+// 16 Gigabytes in Bytes (soft-cap)
+const MaxStorageBytes int64 = 16 * 1024 * 1024 * 1024
+
 // InitializeDB creates the connection and sets up the schemas
 func InitializeDB(filepath string) (*sql.DB, error) {
 	fmt.Println("[ SERVER -> DB  ] Databse intialization requested.")
@@ -80,14 +83,6 @@ func InitializeDB(filepath string) (*sql.DB, error) {
 	return database, err
 }
 
-// GetStorageStats retrieves local disk space metrics
-func GetStorageStats() StorageResponse {
-	return StorageResponse{
-		TotalBytes:     128000000000, // ~128 GB
-		AvailableBytes: 64000000000,  // ~64 GB
-	}
-}
-
 // ProcessUpload streams the encrypted file to disk and logs it to SQLite
 func ProcessUpload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("\n[      STOR      ] Upload request initiated.")
@@ -118,6 +113,19 @@ func ProcessUpload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("[   AUTH_CRYPT   ] User token is valid.")
+
+	// 3. Soft storage cap.
+	var usedBytes int64
+	database.QueryRow("SELECT COALESCE(SUM(size_bytes), 0) FROM files").Scan(&usedBytes)
+	availableBytes := MaxStorageBytes - usedBytes
+
+	// Pre-flight check: If the HTTP request tells us the file size, check it immediately
+	if r.ContentLength > availableBytes {
+		fmt.Println("[      STOR      ] Process aborted:")
+		http.Error(w, "Upload exceeds 10GB server capacity", http.StatusInsufficientStorage)
+		fmt.Printf("[      STOR      ]     File exceeds available storage capacity: %v bytes\n", availableBytes)
+		return
+	}
 
 	// 3. Roll the Token
 	newToken, err := auth.GenerateOneTimeToken()
@@ -296,4 +304,26 @@ func ProcessDownload(database *sql.DB, w http.ResponseWriter, r *http.Request) {
 // Helper to generate random file IDs
 func generateFileID() (string, error) {
 	return auth.GenerateOneTimeToken() // Reusing the secure hex generator for a 64-char file ID
+}
+
+// GetStorageStats queries the database for total used space
+func GetStorageStats(database *sql.DB) StorageResponse {
+	var usedBytes int64
+
+	// COALESCE ensures we get 0 instead of NULL if the table is completely empty
+	err := database.QueryRow("SELECT COALESCE(SUM(size_bytes), 0) FROM files").Scan(&usedBytes)
+	if err != nil {
+		fmt.Println("[      DB        ] Warning: Could not calculate used storage.")
+		usedBytes = 0
+	}
+
+	available := MaxStorageBytes - usedBytes
+	if available < 0 {
+		available = 0
+	}
+
+	return StorageResponse{
+		TotalBytes:     MaxStorageBytes,
+		AvailableBytes: available,
+	}
 }

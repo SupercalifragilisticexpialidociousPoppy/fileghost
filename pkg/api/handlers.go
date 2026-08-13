@@ -27,18 +27,6 @@ func (s *Server) HandlePing(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[     SERVER    ] Server pinged.")
 }
 
-func (s *Server) HandleCheckStorage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Delegate logic to the db package
-	resp := db.GetStorageStats()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
-}
-
 // --- Auth Handlers ---
 
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
@@ -99,4 +87,17 @@ func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate logic to the db package
 	db.ProcessDownload(s.DB, w, r)
+}
+
+func (s *Server) HandleCheckStorage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Pass s.DB into the function!
+	resp := db.GetStorageStats(s.DB)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

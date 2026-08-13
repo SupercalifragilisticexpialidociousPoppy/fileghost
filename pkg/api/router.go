@@ -10,7 +10,7 @@ func NewRouter(srv *Server) *http.ServeMux {
 
 	// Utility Routes
 	mux.HandleFunc("/ping", srv.HandlePing)
-	mux.HandleFunc("/checkglobalstorage", srv.HandleCheckStorage)
+	mux.HandleFunc("/storage", srv.HandleCheckStorage)
 
 	// Auth Routes
 	mux.HandleFunc("/register", srv.HandleRegister)
