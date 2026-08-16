@@ -8,10 +8,20 @@ import (
 
 	"fileghost_server/pkg/api"
 	"fileghost_server/pkg/db"
+	"fileghost_server/pkg/tunnel"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	fmt.Println("[    SERVER     ] Initializing server...")
+
+	err := godotenv.Load("cmd/.env")
+	if err != nil {
+		fmt.Println("[     .ENV      ] Couldn't locate .env file.")
+	} else {
+		fmt.Println("[     .ENV      ] Located .env file.")
+	}
 
 	// Initialize Database from pkg/db
 	database, err := db.InitializeDB("server_data.db")
@@ -27,6 +37,10 @@ func main() {
 
 	port := ":2050"
 	fmt.Printf("[    SERVER     ] Server listening locally on http://localhost%s\n", port)
+
+	fmt.Println("[    SERVER     ] Attempting pinggy tunnnelling...")
+	tunnel.StartPinggyTunnel(port)
+	defer tunnel.StopPinggyTunnel()
 
 	server := &http.Server{
 		Addr:         port,
