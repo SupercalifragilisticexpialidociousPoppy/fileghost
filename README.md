@@ -1,8 +1,10 @@
 # fileghost_server
-This branch contains the server code, which defines how the database communicates with the client app.
+This branch contains the server code. It deals with the database (user authentication, file upload/download) and hosting.
 
 ## Hosting
 By default, the server starts running on `http:localhost:2050`, any device on the same network as the server can use this to communicate just fine. However, for internet hosting, you can use a service like CloudFlare for maximum security and reliability. I, however, am broke and will hence resort to a free Pinggy + Discord combo.
+
+The idea is that the server will run locally on port 2050, Pinggy will expose that port to internet traffic and generate a random URL for it. Then, this URL is posted on a discord server where your users can see it.
 
 ##### There are two prerequisites before you compile:
 
