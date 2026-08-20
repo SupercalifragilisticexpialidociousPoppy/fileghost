@@ -1,5 +1,5 @@
 # ghostorag_
-**Zero-Knowledge, Network-based Cloud Storage**
+**Zero-Knowledge, Network-based Cloud Storage**\
 ghostorag_ is a self-hosted cloud storage system designed with some serious data privacy in mind. It allows you to host your own remote file locker over the internet or a local network, where the server knows absolutely nothing about the files it holds.
 
 ## A Tale of Two Cities
