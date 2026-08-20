@@ -29,7 +29,7 @@ func DeriveKey(password string, salt []byte) []byte {
 // Encrypt takes raw data and a password, producing [Salt][Nonce][Ciphertext+Tag]
 func Encrypt(plaintext []byte, password string) ([]byte, error) {
 	// 0. Confirmation of command.
-	fmt.Println("[  CLI --> ENC   ] Received payload.")
+	fmt.Println("[      ENC       ] Received payload.")
 	fmt.Println("[      ENC       ] Attempting encryption...")
 
 	// 1. Generate random 16-byte salt

@@ -13,38 +13,44 @@ var sessionToken string
 var loggedInUser string
 
 func printBanner() {
-	eyecon := `
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢐⠀⠀⠀⠀⠀⠀⡷⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀	
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⡇⢠⠀⠀⡀⢠⣿⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡁⠀⠀⠀⠀⢀⠀⡀⠀⣷⠈⣧⡀⢀⡿⡿⠀⣰⠁⡀⢀⠀⠀⠀⠀⢠⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀	         [                FILEGHOST  v_0.1                ]
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡁⢱⠀⠀⠀⢀⠀⣀⢱⣆⣿⡀⢸⣷⣀⣱⣿⣀⡿⢰⢇⡎⠀⠀⠀⠀⢸⠀⠀⠀⠀⠀⢀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀			   
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣆⠀⠈⠀⡘⣷⡄⡄⠂⢮⣱⣬⣷⣿⣷⡞⣿⣿⣻⣿⣿⡏⣿⢸⡝⢒⡖⠶⡄⣾⡠⣀⠀⠀⡐⣼⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢯⡂⠄⢂⣴⢿⣿⡿⡇⣩⣿⢻⣿⣿⣿⣷⣽⣿⣾⣿⣿⣦⣿⣿⢡⣎⣿⢁⣼⣟⠂⣌⣹⢻⣲⣇⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠶⡀⠀⠀⠀⠀⠀⠐⣩⢿⣿⣙⣲⣌⢿⣿⣷⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣾⣿⣿⣿⣷⣶⣾⣿⣿⣿⣣⣿⠶⠠⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀	         
-⠀⠀⠀⠀⠀⠀⠹⣔⠄⢐⣶⡞⢫⣑⣦⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⡍⡀⠀⠈⠢⢀⠀⠀⠀⠀⠀⠀⠀	         
-⢀⣀⣀⣀⣀⣐⣄⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣷⣦⡀⠀⠀⠁⠀⠀⠀⠀⠀⠀
-⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⠟⠉⠁⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠞⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⢈⡍⠻⣦⣀⠀⠀⠀⠀⠀⠀⠀           [ COMMANDS:                                      ]
-⠀⠀⠘⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠉⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⠿⠛⠻⠟⠀⠈⠉⠉⢉⣭⣿⣿⣿⣿⣿⣿⣿⣿⠈⠃⠀⠀⠏⣳⡀⠀⠀⠀⠀⠀		 
-⠀⠀⠀⣩⠼⣟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠀⠀⢴⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⢠⠀⠀⠈⠦⡀⠀⠀⠀	         [    /register                                   ]
-⠀⠀⠀⠀⡸⢹⡉⢿⣿⣿⡿⡿⠏⠏⠉⢿⡀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⠀⢀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⣱⡀⠀⠀		 [    /login                                      ]
-⠀⠀⠀⠀⠀⢙⢧⢻⣥⣚⣽⣱⢢⣆⡠⠈⠙⠂⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣏⣤⣾⣿⣿⣦⣄⡘⢿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⣀⣜⡀⠀		 [    /logout                                     ]
-⠀⠀⠀⠀⠀⠈⢧⢺⡷⣿⣟⣿⣯⣯⣖⢇⠀⠀⠉⠢⡀⠀⠀⠀⠀⠀⢹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⠠⢂⣎⣰⣿⢷⠀		 [    /changepassword                             ]
-⠀⠀⠀⠀⠀⠀⠈⡝⣿⣿⣿⣿⣿⣾⡿⣯⣉⣤⣀⡀⠀⠑⠀⢀⡀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⠀⢀⡀⠀⣠⠰⢍⣡⡟⣴⣣⣯⡆
-⠀⠀⠀⠀⠀⠀⠀⣵⣿⣿⣿⣿⣿⣿⣿⡿⣿⡾⣦⡜⡞⣒⡐⠢⣄⣉⡂⠄⠀⠉⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢋⠤⠠⠶⠒⠉⠉⠈⠁⠀⠰⠄⠀⠹⢏⠟⠁		 [    /ping                                       ]
-⠀⠀⠀⠀⠀⢠⡾⠋⠀⠉⠩⠽⢷⡟⣿⣿⣿⣿⣏⣻⣽⣡⣛⡑⢦⡉⢯⣩⡿⢶⣥⣦⣝⢻⣟⠿⣿⡿⢿⡿⢟⠟⠍⠁⠀⠀⠋⠀⠄⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀		 [    /storage                                    ]
-⠀⠀⠀⠀⠔⠋⠀⠀⠀⠀⠄⠀⢊⣾⣿⣽⡿⠿⡿⢟⡿⣷⣿⣿⣾⣿⣲⡴⠏⣲⠄⠤⠍⠣⠌⣻⠈⢠⠀⢀⣀⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀		 [    /myfiles                                    ]
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢂⣾⠛⠉⠀⠀⠀⠀⠀⠀⠯⠁⣾⡟⣩⣶⡿⠟⠋⠙⠚⠓⠃⢻⡟⣰⠏⠈⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀		 [    /crypt                                      ]
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢽⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⡾⠛⠁⠀⠀⠀⠀⠀⠀⠀⠘⣿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀		 [    /upload                                     ]
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀		 [    /download                                   ]
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+	eyecon1 := `
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢐⠀⠀⠀⠀⠀⠀⡷
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⡇⢠⠀⠀⡀⢠⣿⠀⠀⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣘⡁⠀⠀⠀⠀⢀⠀⡀⠀⣷⠈⣧⡀⢀⡿⡿⠀⣰⠁⡀⢀⠀⠀⠀⠀⢠⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀	         [                 GHOSTORAG_v0.5                 ]
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡁⢱⠀⠀⠀⢀⠀⣀⢱⣆⣿⡀⢸⣷⣀⣱⣿⣀⡿⢰⢇⡎⠀⠀⠀⠀⢸⠀⠀⠀⠀⠀⢀⡇
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣆⠀⠈⠀⡘⣷⡄⡄⠂⢮⣱⣬⣷⣿⣷⡞⣿⣿⣻⣿⣿⡏⣿⢸⡝⢒⡖⠶⡄⣾⡠⣀⠀⠀⡐⣼⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢯⡂⠄⢂⣴⢿⣿⡿⡇⣩⣿⢻⣿⣿⣿⣷⣽⣿⣾⣿⣿⣦⣿⣿⢡⣎⣿⢁⣼⣟⠂⣌⣹⢻⣲⣇⢀
+⠀⠀⠀⠀⠀⠶⡀⠀⠀⠀⠀⠀⠐⣩⢿⣿⣙⣲⣌⢿⣿⣷⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣾⣿⣿⣿⣷⣶⣾⣿⣿⣿⣣⣿⠶⠠⡀
+⠀⠀⠀⠀⠀⠀⠹⣔⠄⢐⣶⡞⢫⣑⣦⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⡍⡀⠀⠈⠢⢀
+⢀⣀⣀⣀⣀⣐⣄⣹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣷⣦⡀⠀⠀⠁
+⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⠟⠉⠁⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠞⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⢈⡍⠻⣦⣀			 [ USER:`
+	fmt.Printf("%v\n", eyecon1)
+	if loggedInUser != "" {
+		fmt.Printf("⠀⠀⠘⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠉⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⠿⠛⠻⠟⠀⠈⠉⠉⢉⣭⣿⣿⣿⣿⣿⣿⣿⣿⠈⠃⠀⠀⠏⣳⡀⠀⠀⠀⠀⠀		        	%s\n", loggedInUser)
+	} else {
+		fmt.Print("⠀⠀⠘⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠉⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⠿⠛⠻⠟⠀⠈⠉⠉⢉⣭⣿⣿⣿⣿⣿⣿⣿⣿⠈⠃⠀⠀⠏⣳⡀⠀⠀⠀⠀⠀		        	<Not logged in yet>\n")
+	}
+	eyecon2 := `⠀⠀⠀⣩⠼⣟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠀⠀⢴⣿⣾⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⢠⠀⠀⠈⠦⡀								  ]
+⠀⠀⠀⠀⡸⢹⡉⢿⣿⣿⡿⡿⠏⠏⠉⢿⡀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⠀⢀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⣱⡀
+⠀⠀⠀⠀⠀⢙⢧⢻⣥⣚⣽⣱⢢⣆⡠⠈⠙⠂⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣏⣤⣾⣿⣿⣦⣄⡘⢿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⣀⣜⡀	 	 [ SERVER URL:
 `
-
-	fmt.Printf("%v\n", eyecon)
+	fmt.Printf("%v", eyecon2)
+	fmt.Printf("⠀⠀⠀⠀⠀⠈⢧⢺⡷⣿⣟⣿⣯⣯⣖⢇⠀⠀⠉⠢⡀⠀⠀⠀⠀⠀⢹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⠠⢂⣎⣰⣿⢷				%s\n", serverURL)
+	eyecon4 := `⠀⠀⠀⠀⠀⠀⠈⡝⣿⣿⣿⣿⣿⣾⡿⣯⣉⣤⣀⡀⠀⠑⠀⢀⡀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⠀⢀⡀⠀⣠⠰⢍⣡⡟⣴⣣⣯⡆							  	  ]
+⠀⠀⠀⠀⠀⠀⠀⣵⣿⣿⣿⣿⣿⣿⣿⡿⣿⡾⣦⡜⡞⣒⡐⠢⣄⣉⡂⠄⠀⠉⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢋⠤⠠⠶⠒⠉⠉⠈⠁⠀⠰⠄⠀⠹⢏⠟⠁
+⠀⠀⠀⠀⠀⢠⡾⠋⠀⠉⠩⠽⢷⡟⣿⣿⣿⣿⣏⣻⣽⣡⣛⡑⢦⡉⢯⣩⡿⢶⣥⣦⣝⢻⣟⠿⣿⡿⢿⡿⢟⠟⠍⠁⠀⠀⠋⠀⠄⠃
+⠀⠀⠀⠀⠔⠋⠀⠀⠀⠀⠄⠀⢊⣾⣿⣽⡿⠿⡿⢟⡿⣷⣿⣿⣾⣿⣲⡴⠏⣲⠄⠤⠍⠣⠌⣻⠈⢠⠀⢀⣀⠄
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢂⣾⠛⠉⠀⠀⠀⠀⠀⠀⠯⠁⣾⡟⣩⣶⡿⠟⠋⠙⠚⠓⠃⢻⡟⣰⠏⠈⠀⠁
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢽⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⡾⠛⠁⠀⠀⠀⠀⠀⠀⠀⠘⣿⣏
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⡇					⠁⡇⠉⠘⠟⠦⢏⡿        ⢀⡀⠀⣠⣏⣻⣽⣡⣛⡑⢦⡉⢯⣩⡿⢶⣥⣦⣝⠘⠟⠦⢏⡿       ⢏⡿
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠰⠃							⡟⣿⣳⡀⣤⡏⠟⢉⠰⢍⣡⡟⣴⣣⣯⡆⡟⣿⣳⡀⣤⡏⠟⢉       ⡟⣿⣳⡀⣤⡏⠟⢉
+`
+	fmt.Printf("%v", eyecon4)
 }
 
 func main() {
 	printBanner()
+	fmt.Print("\n[ RUN:		/help		TO VIEW COMMANDS ]\n")
 
 	// --- OS Signal Trap ---
 	sigChan := make(chan os.Signal, 1)
@@ -61,7 +67,7 @@ func main() {
 			handleLogout()
 		}
 
-		fmt.Printf("[    FILEGHOST   ] Take care of yourself.\n\n")
+		fmt.Printf("[    GHOSTORAG_   ] Take care of yourself.\n\n")
 		os.Exit(0)
 	}()
 
@@ -72,7 +78,7 @@ func main() {
 		if loggedInUser != "" {
 			prompt = loggedInUser
 		}
-		fmt.Printf("\nfileghost@%s > ", prompt)
+		fmt.Printf("\nghostorag_@%s > ", prompt)
 
 		// Wait for user input
 		if !scanner.Scan() {
@@ -101,6 +107,8 @@ func main() {
 			handleChangePassword(scanner)
 		case "/logout":
 			handleLogout()
+		case "/neofetch":
+			printBanner()
 		case "/ping":
 			handlePing()
 		case "/storage":
@@ -109,6 +117,14 @@ func main() {
 			handleCrypt(scanner)
 		case "/token":
 			showtoken()
+		case "/myfiles":
+			handleMyFiles()
+		case "/upload":
+			handleUpload(scanner)
+		case "/download":
+			handleDownload(scanner)
+		case "/server":
+			handleServer(scanner)
 		case "/exit", "exit", "quit":
 			if sessionToken == "" {
 				fmt.Println("[      CLI      ] Already logged out, safe to exit.")
@@ -116,7 +132,7 @@ func main() {
 				fmt.Println("[      CLI      ] Logging out...")
 				handleLogout()
 			}
-			fmt.Printf("[   FILEGHOST   ] Take care of yourself.\n\n")
+			fmt.Printf("[   GHOSTORAG_   ] Take care of yourself.\n\n")
 			os.Exit(0)
 		default:
 			fmt.Printf("[      CLI      ] Unknown command: '%s'. Type /help for available commands.\n", command)
@@ -126,18 +142,20 @@ func main() {
 
 func printHelp() {
 	fmt.Println("\n[ COMMANDS: ]")
-	fmt.Println("  /register      		- Create a new account")
-	fmt.Println("  /login         		- Authenticate and begin session")
+	fmt.Println("  /register      		- Create a new account.")
+	fmt.Println("  /login         		- Authenticate and begin session.")
 	fmt.Println("  /logout        		- Log out and destroy token.")
 	fmt.Println("  /token         		- View current token.")
-	fmt.Println("  /changepassword		- Change your account password.")
+	fmt.Println("  /changepassword		- Take a guess.")
 	fmt.Println()
-	fmt.Println("  /ping          		- Check if server is online.")
+	fmt.Println("  /ping          		- Check if the server is online.")
 	fmt.Println("  /storage       		- Check server capacity.")
 	fmt.Println("  /myfiles       		- View your uploaded files.")
 	fmt.Println("  /upload        		- Upload an encrypted file to the server.")
 	fmt.Println("  /download      		- Download your file from the server.")
-	fmt.Println("  /crypt         		- Encrypt or decrpyt a file.")
 	fmt.Println()
+	fmt.Println("  /crypt         		- Encrypt or decrpyt a file.")
+	fmt.Println("  /server				- Set server URL.")
+	fmt.Println("  /neofetch			- Funny banner.")
 	fmt.Println("  /exit          		- Close the application safely.")
 }
