@@ -1,4 +1,4 @@
-# fileghost_server
+# ghostorag_server
 This branch contains the server code. It deals with the database (user authentication, file upload/download) and hosting.
 
 ## Hosting
